@@ -3,13 +3,13 @@ import { LABEL_HEIGHT, OUT_H, OUT_W, SOURCE_A4 } from "./types";
 
 /**
  * Defaults calibrated against the reference sample (PRD §2):
- * crop x: 180 → 418, y: 458 → 823 (i.e. 238 × 365 pt), A4 595 × 842 pt.
+ * crop x: 186 → 408, y: 458 → 818 (i.e. 222 × 360 pt), A4 595 × 842 pt.
  */
 export const DEFAULT_CALIBRATION: Calibration = {
-  left: 180,
-  right: 418,
-  topGap: 19, // 842 − 823
-  anchorOffset: 26, // label bottom edge sits this far above the "Tax Invoice" baseline
+  left: 186,
+  right: 408,
+  topGap: 24, // 842 − 818
+  anchorOffset: 16, // label bottom edge sits this far above the "Tax Invoice" baseline
 };
 
 const MIN_CROP_W = 40;
@@ -20,7 +20,7 @@ const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(mi
 /**
  * Turn raw per-page facts into a concrete crop + uniform scale plan.
  * Primary: text-anchor split (dynamic per page).
- * Fallback: fixed coordinates (top-anchored 238×365 label block).
+ * Fallback: fixed coordinates (top-anchored 222×360 label block).
  * Warnings (FR8): split point outside expected band, odd page size, unusual scale.
  */
 export function computePlan(raw: RawPage, cal: Calibration): PagePlan {
