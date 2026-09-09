@@ -5,8 +5,8 @@ import type { PDFFont, PDFPage } from "pdf-lib";
  * Synthetic Flipkart-style A4 label+invoice batch (3 orders) so the tool can be
  * tried without a real file. Laid out to match the real template geometry:
  * - A4 595×842 pt pages
- * - label block on top, dashed split rule at y = 457
- * - "Tax Invoice" heading baseline at y = 431 (so crop bottom = 431 + 26 = 457)
+ * - label block on top, dashed split rule at y = 458
+ * - "Tax Invoice" heading baseline at y = 442 (so crop bottom = 442 + 16 = 458)
  * - barcode bars + QR block inside the label region
  * Everything below the dashed rule is invoice content that LabelTrim discards.
  */
@@ -103,7 +103,7 @@ function drawFakeQr(page: PDFPage, seed: number) {
   const rng = mulberry32(seed);
   const cell = 4.6;
   const cols = 14;
-  const x0 = 344; // sits beside the barcode, fully inside the 180–418 crop
+  const x0 = 342; // sits beside the barcode, fully inside the 186–408 crop
   const y0 = 486;
   for (let r = 0; r < cols; r++) {
     for (let c = 0; c < cols; c++) {
@@ -129,16 +129,16 @@ function drawPage(
 ) {
   const page = doc.addPage([595, 842]);
 
-  // ---- label header ----
-  page.drawText("FLIPKART", { x: 40, y: 808, size: 22, font: helvB, color: BLUE });
+  // ---- label header (kept below the 24 pt top margin, i.e. y < 818) ----
+  page.drawText("FLIPKART", { x: 40, y: 802, size: 22, font: helvB, color: BLUE });
   page.drawText(`Packing Slip  ·  ${order.orderId}`, {
     x: 168,
-    y: 812,
+    y: 806,
     size: 9,
     font: helv,
     color: GRAY,
   });
-  page.drawLine({ start: { x: 40, y: 798 }, end: { x: 555, y: 798 }, thickness: 1.5, color: BLUE });
+  page.drawLine({ start: { x: 40, y: 792 }, end: { x: 555, y: 792 }, thickness: 1.5, color: BLUE });
 
   // ---- ship-to block ----
   page.drawText("SHIP TO", { x: 40, y: 774, size: 8, font: helvB, color: GRAY });
@@ -170,25 +170,25 @@ function drawPage(
   drawFakeQr(page, 77 + index * 13);
   page.drawText("Customer  •  do not fold", { x: 195, y: 448, size: 7, font: helv, color: GRAY });
 
-  // ---- the split: dashed rule at y = 457 ----
+  // ---- the split: dashed rule at y = 458 ----
   page.drawLine({
-    start: { x: 30, y: 457 },
-    end: { x: 565, y: 457 },
+    start: { x: 30, y: 458 },
+    end: { x: 565, y: 458 },
     thickness: 1,
     color: MID,
     dashArray: [6, 4],
   });
 
   // ---- invoice section (everything below is discarded by LabelTrim) ----
-  page.drawText("Tax Invoice", { x: 40, y: 431, size: 14, font: helvB, color: DARK });
-  page.drawText(`Order ${order.orderId}`, { x: 470, y: 431, size: 8, font: helv, color: GRAY });
-  page.drawLine({ start: { x: 40, y: 420 }, end: { x: 555, y: 420 }, thickness: 0.8, color: MID });
+  page.drawText("Tax Invoice", { x: 40, y: 442, size: 14, font: helvB, color: DARK });
+  page.drawText(`Order ${order.orderId}`, { x: 470, y: 442, size: 8, font: helv, color: GRAY });
+  page.drawLine({ start: { x: 40, y: 431 }, end: { x: 555, y: 431 }, thickness: 0.8, color: MID });
 
-  page.drawText("Item", { x: 40, y: 396, size: 8, font: helvB, color: GRAY });
-  page.drawText("Qty", { x: 300, y: 396, size: 8, font: helvB, color: GRAY });
-  page.drawText("Gross amount", { x: 400, y: 396, size: 8, font: helvB, color: GRAY });
+  page.drawText("Item", { x: 40, y: 407, size: 8, font: helvB, color: GRAY });
+  page.drawText("Qty", { x: 300, y: 407, size: 8, font: helvB, color: GRAY });
+  page.drawText("Gross amount", { x: 400, y: 407, size: 8, font: helvB, color: GRAY });
 
-  let rowY = 376;
+  let rowY = 387;
   for (let i = 0; i < order.items.length; i++) {
     page.drawText(`${order.items[i]}  ·  HSN 6109`, { x: 40, y: rowY, size: 9, font: helv, color: DARK });
     page.drawText(String(i + 1), { x: 300, y: rowY, size: 9, font: helv, color: DARK });
@@ -200,7 +200,7 @@ function drawPage(
 
   page.drawText(
     "GSTIN: 29AABCR1234F1Z5   ·   Place of supply: Karnataka   ·   Invoice copy — keep for records",
-    { x: 40, y: 296, size: 8, font: helv, color: GRAY }
+    { x: 40, y: 307, size: 8, font: helv, color: GRAY }
   );
   page.drawText("This is a system-generated tax invoice.", { x: 40, y: 64, size: 8, font: helv, color: GRAY });
 }

@@ -8,7 +8,7 @@ export const OUT_H = 432;
 export const SOURCE_A4 = { w: 595, h: 842 };
 
 /** Fixed label block height (pt) used by the no-anchor fallback crop. */
-export const LABEL_HEIGHT = 365;
+export const LABEL_HEIGHT = 360;
 
 export interface Calibration {
   /** Left edge of the label crop, in pt (x). */

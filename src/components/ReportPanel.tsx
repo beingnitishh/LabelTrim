@@ -288,8 +288,8 @@ export default function ReportPanel(props: ReportPanelProps) {
             page is a brand-new 288×432 pt page containing only the label region. The invoice never makes it into the file.
           </li>
           <li>
-            <span className="font-semibold text-slate-300">Uniform scale only.</span> The label block (238×365 pt) is
-            scaled ×~1.18 on <em>both</em> axes to fill 4×6 height, leaving ~3 pt side margins. Never stretched on one
+            <span className="font-semibold text-slate-300">Uniform scale only.</span> The label block (222×360 pt) is
+            scaled ×1.20 on <em>both</em> axes to fill 4×6 height, leaving ~11 pt side margins. Never stretched on one
             axis — that would distort barcode bar ratios and cause E-Kart scan failures.
           </li>
           <li>
