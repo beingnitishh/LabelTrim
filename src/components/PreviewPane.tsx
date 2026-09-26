@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { getDocument } from "pdfjs-dist";
-import type { PDFDocumentProxy } from "pdfjs-dist";
+import { getDocument } from "../lib/pdfjsCompat";
+import type { PDFDocumentProxy } from "../lib/pdfjsCompat";
 import { ensureWorker } from "../lib/pdfjsSetup";
 import type { PagePlan } from "../lib/types";
 import { OUT_H, OUT_W } from "../lib/types";

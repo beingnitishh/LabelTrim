@@ -1,5 +1,5 @@
-import { GlobalWorkerOptions, PDFWorker } from "pdfjs-dist";
-import workerRaw from "pdfjs-dist/build/pdf.worker.min.mjs?raw";
+import { GlobalWorkerOptions, PDFWorker } from "./pdfjsCompat";
+import workerRaw from "pdfjs-dist/legacy/build/pdf.worker.min.mjs?raw";
 
 /**
  * The app ships as a single inlined HTML file, so the pdf.js worker can't live
