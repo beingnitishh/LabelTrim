@@ -1,4 +1,4 @@
-import { getDocument } from "pdfjs-dist";
+import { getDocument } from "./pdfjsCompat";
 import { ensureWorker } from "./pdfjsSetup";
 import type { RawPage } from "./types";
 
