@@ -43,7 +43,7 @@ const ORDERS: DemoOrder[] = [
       "Phone: 98765 43210",
     ],
     items: ["1 × Cotton Crew T-Shirt (Navy, M)"],
-    total: "₹ 599",
+    total: "Rs. 599",
   },
   {
     orderId: "OD120478899384202",
@@ -58,7 +58,7 @@ const ORDERS: DemoOrder[] = [
       "Landmark: near ICICI Bank ATM", // 7th line — real files clip this in Flipkart's template
     ],
     items: ["2 × Ceramic Planters (Set of 2)"],
-    total: "₹ 1,198",
+    total: "Rs. 1,198",
   },
   {
     orderId: "OD120478899384203",
@@ -75,7 +75,7 @@ const ORDERS: DemoOrder[] = [
       "1 × Anti-Skid Socks 3-Pack",
       "1 × Shoe Freshner Spray 100ml",
     ],
-    total: "₹ 2,049",
+    total: "Rs. 2,049",
   },
 ];
 
@@ -192,7 +192,7 @@ function drawPage(
   for (let i = 0; i < order.items.length; i++) {
     page.drawText(`${order.items[i]}  ·  HSN 6109`, { x: 40, y: rowY, size: 9, font: helv, color: DARK });
     page.drawText(String(i + 1), { x: 300, y: rowY, size: 9, font: helv, color: DARK });
-    page.drawText(`₹ ${order.total.replace("₹ ", "")}`, { x: 400, y: rowY, size: 9, font: helv, color: DARK });
+    page.drawText(`Rs. ${order.total.replace("Rs. ", "")}`, { x: 400, y: rowY, size: 9, font: helv, color: DARK });
     rowY -= 20;
   }
   page.drawLine({ start: { x: 40, y: rowY + 12 }, end: { x: 555, y: rowY + 12 }, thickness: 0.8, color: MID });
