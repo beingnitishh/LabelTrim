@@ -37,6 +37,37 @@ function no(cond: unknown, msg: string): void {
   console.log(`  ✓ ${msg}`);
 }
 
+const VOID_TAGS = new Set([
+  "area", "base", "br", "col", "embed", "hr", "img", "input",
+  "link", "meta", "param", "source", "track", "wbr",
+]);
+
+/**
+ * Minimal well-formedness check for the markup React emits: every opened
+ * element must be closed, in order. Catches unbalanced JSX structure that a
+ * type-check cannot see. (There is no DOM in Node, and no browser is available
+ * in this environment, so this is the closest we get to "the page parses".)
+ */
+function assertBalanced(html: string, label: string): void {
+  const stack: string[] = [];
+  const tagRe = /<(\/?)([a-zA-Z][a-zA-Z0-9-]*)((?:[^>"']|"[^"]*"|'[^']*')*?)(\/?)>/g;
+  let m: RegExpExecArray | null;
+  while ((m = tagRe.exec(html)) !== null) {
+    const [, closing, rawName, attrs, selfClose] = m;
+    const name = rawName.toLowerCase();
+    if (closing) {
+      const expected = stack.pop();
+      assert.equal(expected, name, `${label}: </${name}> closes <${expected}>`);
+      continue;
+    }
+    if (selfClose || VOID_TAGS.has(name)) continue;
+    stack.push(name);
+  }
+  assert.deepEqual(stack, [], `${label}: no unclosed elements`);
+  passed++;
+  console.log(`  ✓ ${label}: markup is well-formed (all tags balanced)`);
+}
+
 /** Real plan objects, straight from the production calibration code. */
 const anchoredRaw: RawPage = {
   pageIndex: 0,
@@ -57,6 +88,7 @@ const noop = () => {};
 console.log("Idle / upload screen (App)");
 {
   const html = renderToStaticMarkup(h(App));
+  assertBalanced(html, "upload screen");
 
   ok(html.includes("Goodbye A4. Hello,"), "main heading present");
   ok(html.includes("4 × 6."), "heading keeps the 4 × 6 emphasis");
@@ -108,6 +140,7 @@ console.log("Idle / upload screen (App)");
 console.log("\nPrint guide screen");
 {
   const html = renderToStaticMarkup(h(GuideScreen, { onBack: noop }));
+  assertBalanced(html, "print guide screen");
   ok(html.includes("Print guide"), "guide screen heading");
   ok(html.includes("Review flagged pages and barcode boundaries"), "guide point 1 present");
   ok(html.includes("Select 4 × 6-inch paper"), "guide point 2 present");
@@ -128,6 +161,7 @@ console.log("\nPreview pane");
       onPageChange: noop,
     }),
   );
+  assertBalanced(html, "preview pane");
   ok(html.includes("PDF preview"), "preview card labelled");
   ok(html.includes("Show crop overlay"), "crop overlay toggle preserved");
   ok(html.includes('aria-label="Previous page"') && html.includes('aria-label="Next page"'), "page navigation preserved");
@@ -158,6 +192,7 @@ console.log("\nReport panel — ready phase");
       activePage: 0,
     }),
   );
+  assertBalanced(html, "report panel (ready)");
   ok(html.includes("Batch summary"), "batch summary panel present");
   ok(html.includes("Convert to 4 × 6 PDF"), "prominent convert button present");
   ok(html.includes("Advanced crop adjustments"), "advanced crop adjustments are collapsible (<details>)");
@@ -241,6 +276,7 @@ console.log("\nReport panel — download-success state");
       activePage: 0,
     }),
   );
+  assertBalanced(html, "report panel (done)");
   ok(html.includes("2 thermal labels ready"), "download-success state");
   ok(html.includes("labeltrim-4x6-batch-2pages.pdf"), "output filename shown");
   ok(html.includes("Download again"), "download again offered");

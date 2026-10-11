@@ -76,8 +76,9 @@ Three suites, all runnable with `npm test`:
    boundaries, page order, 288 × 432 pt output, vector Form XObject embedding, the
    fixed-coordinate fallback and single-page PDFs.
 2. **`npm run test:ui` — UI structure smoke test** (`test/uiRender.test.tsx`). Server-renders
-   the upload, review/export, success, error and print-guide screens and asserts the required
-   copy, controls, accessible labels and collapsible sections.
+   the upload, review/export, success, error and print-guide screens, checks that the emitted
+   markup is well-formed (every tag balanced) and asserts the required copy, controls,
+   accessible labels and collapsible sections.
 3. **`npm run test:compat:css` — static Chrome-109 CSS / single-file guard**
    (`test/cssCompat.test.mjs`). Parses the built `dist/index.html`: rejects modern colour
    functions and other too-new syntax, checks every `var(--lt-*)` is defined, verifies the
