@@ -137,7 +137,7 @@ export function IconCrop(p: IconProps) {
 
 export function IconSpinner(p: IconProps) {
   return (
-    <Svg {...p} className={p.className ?? "animate-spin"}>
+    <Svg {...p} className={p.className ?? "icon-spin"}>
       <path d="M21 12a9 9 0 1 1-9-9" />
     </Svg>
   );
@@ -169,17 +169,72 @@ export function IconRuler(p: IconProps) {
   );
 }
 
-/** Brand mark: Flipkart blue tile, white barcode bars, amber crop brackets. */
-export function Logo({ className = "h-8 w-8" }: { className?: string }) {
+export function IconChevronDown(p: IconProps) {
   return (
-    <svg viewBox="0 0 40 40" className={className} aria-hidden="true">
-      <defs>
-        <linearGradient id="lt-g" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#2874f0" />
-          <stop offset="100%" stopColor="#1e5fd6" />
-        </linearGradient>
-      </defs>
-      <rect width="40" height="40" rx="10" fill="url(#lt-g)" />
+    <Svg {...p}>
+      <path d="m6 9.5 6 6 6-6" />
+    </Svg>
+  );
+}
+
+export function IconMenu(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <path d="M4 7h16M4 12h16M4 17h16" />
+    </Svg>
+  );
+}
+
+export function IconLayers(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <path d="m12 3 8.5 4.5L12 12 3.5 7.5z" />
+      <path d="m3.5 12.5 8.5 4.5 8.5-4.5" />
+    </Svg>
+  );
+}
+
+export function IconBook(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <path d="M4 4.5A1.5 1.5 0 0 1 5.5 3H18a1.5 1.5 0 0 1 1.5 1.5v15A1.5 1.5 0 0 1 18 21H5.5A1.5 1.5 0 0 1 4 19.5z" />
+      <path d="M8 3v18M11.5 8h4.5M11.5 12h4.5" />
+    </Svg>
+  );
+}
+
+export function IconTarget(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <circle cx="12" cy="12" r="8.5" />
+      <circle cx="12" cy="12" r="3.5" />
+      <path d="M12 1.8v3M12 19.2v3M1.8 12h3M19.2 12h3" />
+    </Svg>
+  );
+}
+
+export function IconArrowRight(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <path d="M4 12h15m0 0-6-6m6 6-6 6" />
+    </Svg>
+  );
+}
+
+
+/** Brand mark: deep-green tile, white barcode bars, mint crop brackets. */
+export function Logo({
+  className = "",
+  width = 36,
+  height = 36,
+}: {
+  className?: string;
+  width?: number;
+  height?: number;
+}) {
+  return (
+    <svg viewBox="0 0 40 40" className={className} width={width} height={height} aria-hidden="true">
+      <rect width="40" height="40" rx="10" fill="#19765B" />
       {[
         [9, 17, 1.8], [12, 15, 1.2], [15, 16, 2.4], [18.5, 14.5, 1.2], [21, 16.5, 1.8],
         [24, 14.5, 1.2], [27, 15, 2.4], [31, 16.5, 1.2],
@@ -188,7 +243,7 @@ export function Logo({ className = "h-8 w-8" }: { className?: string }) {
       ))}
       <path
         d="M7 27.5v3M7 25.5c0 1.1.9 2 2 2h3M31 25.5c0 1.1-.9 2-2 2h-3M7 12.5v-3M7 14.5c0-1.1.9-2 2-2h3M31 14.5c0-1.1-.9-2-2-2h-3"
-        stroke="#fbbf24"
+        stroke="#93D9BD"
         strokeWidth="1.6"
         strokeLinecap="round"
         fill="none"

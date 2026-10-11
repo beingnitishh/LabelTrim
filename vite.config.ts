@@ -1,6 +1,5 @@
 import path from "path";
 import { fileURLToPath } from "url";
-import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import { viteSingleFile } from "vite-plugin-singlefile";
@@ -9,8 +8,13 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // https://vite.dev/config/
+//
+// Styling is hand-written plain CSS (src/index.css) instead of a utility
+// framework: Tailwind 4 emits oklch()/color-mix() custom properties, which
+// Chrome 109 — the last Chrome for Windows 7/8.1 — cannot resolve. See the
+// header of src/index.css and the guard in test/cssCompat.test.mjs.
 export default defineConfig({
-  plugins: [react(), tailwindcss(), viteSingleFile()],
+  plugins: [react(), viteSingleFile()],
   build: {
     // Chrome 109 is the final Chrome release for Windows 7/8.1 and the oldest
     // browser LabelTrim must run on. Pin the transpile target so esbuild
