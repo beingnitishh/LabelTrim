@@ -1,10 +1,42 @@
 import { getDocument } from "./pdfjsCompat";
+import type { PDFPageProxy } from "./pdfjsCompat";
 import { ensureWorker } from "./pdfjsSetup";
 import type { RawPage } from "./types";
 
 /** Minimal structural type for pdf.js text content (v5 doesn't export it from the root). */
 interface TextContentLike {
   items: unknown[];
+}
+
+/**
+ * Collect a page's text items through an explicit stream reader.
+ *
+ * pdf.js v5's `page.getTextContent()` consumes its ReadableStream with
+ * `for await ... of`, which needs `ReadableStream[Symbol.asyncIterator]` —
+ * missing in Chrome 109 (the final Windows 7/8.1 release), where it throws
+ * "t is not async iterable". `streamTextContent()` exposes the very same
+ * stream, and `getReader()`/`read()` works in every browser with basic
+ * ReadableStream support (Chrome 52+), yielding identical items in
+ * identical order.
+ */
+async function collectTextContent(page: PDFPageProxy): Promise<TextContentLike> {
+  const reader = page.streamTextContent().getReader();
+  const items: unknown[] = [];
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const chunkItems = (value as { items?: unknown[] } | null | undefined)?.items;
+      if (Array.isArray(chunkItems)) {
+        for (const item of chunkItems) items.push(item);
+      }
+    }
+  } finally {
+    // Always drop the lock so page.cleanup()/doc.destroy() can proceed,
+    // even if a chunk read rejects mid-stream.
+    reader.releaseLock();
+  }
+  return { items };
 }
 
 export interface AnalyzeProgress {
@@ -85,7 +117,9 @@ export async function analyzePdf(
     for (let i = 1; i <= doc.numPages; i++) {
       const page = await doc.getPage(i);
       const vp = page.getViewport({ scale: 1 });
-      const tc = await page.getTextContent();
+      // NOT page.getTextContent(): its internal `for await` over a
+      // ReadableStream breaks Chrome 109 (see collectTextContent).
+      const tc = await collectTextContent(page);
       const lines = groupLines(tc);
       const anchor = findAnchor(lines, vp.height);
       pages.push({
