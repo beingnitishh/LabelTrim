@@ -9,7 +9,6 @@ import {
   IconChevronLeft,
   IconChevronRight,
   IconScan,
-  IconSpinner,
 } from "./Icons";
 
 interface PreviewPaneProps {
@@ -27,14 +26,15 @@ interface ViewState {
   ready: boolean;
 }
 
+/** Crop overlay — unchanged geometry, restyled labels for the light UI. */
 function CropOverlay({ plan }: { plan: PagePlan }) {
   const { width: pw, height: ph, crop: c } = plan;
   const sy = (y: number) => ph - y; // PDF Y-up → SVG Y-down
   const mask = `M0,0 H${pw} V${ph} H0 Z M${c.left},${sy(c.top)} V${sy(c.bottom)} H${c.right} V${sy(c.top)} Z`;
   const textStyle = {
-    fontFamily: "Inter, system-ui, sans-serif",
+    fontFamily: "inherit",
     paintOrder: "stroke" as const,
-    stroke: "#020617",
+    stroke: "#ffffff",
     strokeWidth: 4,
   };
 
@@ -42,11 +42,11 @@ function CropOverlay({ plan }: { plan: PagePlan }) {
     <svg
       viewBox={`0 0 ${pw} ${ph}`}
       preserveAspectRatio="none"
-      className="pointer-events-none absolute inset-0 h-full w-full"
+      className="preview__overlay"
       aria-hidden="true"
     >
       {/* dim everything outside the kept region */}
-      <path d={mask} fillRule="evenodd" fill="rgba(2,6,23,0.52)" />
+      <path d={mask} fillRule="evenodd" fill="rgba(15,32,26,0.5)" />
       {/* kept region border */}
       <rect
         x={c.left}
@@ -54,26 +54,26 @@ function CropOverlay({ plan }: { plan: PagePlan }) {
         width={c.right - c.left}
         height={c.top - c.bottom}
         fill="none"
-        stroke="#fbbf24"
-        strokeWidth={2.2}
+        stroke="#19765B"
+        strokeWidth={2.4}
         strokeDasharray="9 6"
         vectorEffect="non-scaling-stroke"
       />
 
-      <text x={c.left + 9} y={sy(c.top) + 19} fontSize={14} fontWeight={700} fill="#fbbf24" {...textStyle}>
+      <text x={c.left + 9} y={sy(c.top) + 17} fontSize={14} fontWeight={700} fill="#0e4a39" {...textStyle}>
         KEPT → 4×6 in
       </text>
 
       {plan.anchorY != null && (
         <>
-          <circle cx={c.left + 11} cy={sy(plan.anchorY)} r={4} fill="#f87171" stroke="#020617" strokeWidth={1.5} />
-          <text x={c.left + 22} y={sy(plan.anchorY) + 4.5} fontSize={12} fontWeight={600} fill="#fca5a5" {...textStyle}>
+          <circle cx={c.left + 11} cy={sy(plan.anchorY)} r={4} fill="#cf4034" stroke="#ffffff" strokeWidth={1.5} />
+          <text x={c.left + 22} y={sy(plan.anchorY) + 4.5} fontSize={12} fontWeight={600} fill="#a3312a" {...textStyle}>
             “{plan.anchorText ?? "Tax Invoice"}” anchor — y={Math.round(plan.anchorY)} pt
           </text>
         </>
       )}
 
-      <text x={c.right - 66} y={sy(c.bottom) - 8} fontSize={11.5} fontWeight={600} fill="#cbd5e1" {...textStyle}>
+      <text x={c.right - 66} y={sy(c.bottom) - 8} fontSize={11.5} fontWeight={600} fill="#3f4f48" {...textStyle}>
         split line
       </text>
     </svg>
@@ -128,7 +128,7 @@ export default function PreviewPane({
           return;
         }
         const vp1 = page.getViewport({ scale: 1 });
-        const availW = Math.max(260, Math.min(containerRef.current?.clientWidth ?? 520, 560));
+        const availW = Math.max(260, Math.min(containerRef.current?.clientWidth ?? 520, 620));
         const dpr = Math.min(window.devicePixelRatio || 1, 2);
         const vp = page.getViewport({ scale: (availW / vp1.width) * dpr });
         const canvas = canvasRef.current;
@@ -165,97 +165,106 @@ export default function PreviewPane({
   );
 
   return (
-    <section className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-xs font-semibold uppercase tracking-widest text-slate-400">
-          Step 2 · Verify the crop
+    <section className="card card--flush" aria-labelledby="lt-preview-title">
+      <div className="card__head">
+        <h2 className="card__title" id="lt-preview-title">
+          PDF preview
         </h2>
-        <label className="flex cursor-pointer select-none items-center gap-2 text-xs font-medium text-slate-300">
-          <input
-            type="checkbox"
-            checked={overlayOn}
-            onChange={onToggleOverlay}
-            className="h-3.5 w-3.5 cursor-pointer accent-fk"
-          />
-          Crop overlay
+        <span className="card__subtitle">
+          Page {Math.min(pageIndex + 1, total)} of {total}
+        </span>
+        <span className="card__spacer" />
+        <label className="checkbox">
+          <input type="checkbox" checked={overlayOn} onChange={onToggleOverlay} />
+          Show crop overlay
         </label>
       </div>
 
-      <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-3 shadow-xl shadow-black/20 sm:p-4">
-        <div ref={containerRef} className="mx-auto w-full" style={{ aspectRatio: "595 / 842", maxWidth: 560 }}>
+      <div className="preview__stage">
+        <div ref={containerRef} className="preview__frame">
           <div
-            className="relative mx-auto"
-            style={view.ready ? { width: view.width, height: view.height } : { height: "100%" }}
+            className="preview__page"
+            style={view.ready ? { width: view.width } : { width: "100%", maxWidth: 520 }}
           >
             {!view.ready && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-slate-500">
-                <IconSpinner className="h-6 w-6 text-fk" />
-                <span className="text-xs">Rendering page…</span>
+              <div className="preview__loading">
+                <span className="spinner" aria-hidden="true" />
+                <span>Rendering page…</span>
               </div>
             )}
-            <canvas ref={canvasRef} className="block" />
+            <canvas ref={canvasRef} className="preview__canvas" hidden={!view.ready} />
             {view.ready && plan && overlayOn && <CropOverlay plan={plan} />}
           </div>
         </div>
-
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-white/5 pt-3">
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => onPageChange(Math.max(0, pageIndex - 1))}
-              disabled={pageIndex === 0}
-              className="rounded-lg border border-white/10 bg-white/5 p-1.5 text-slate-300 transition-colors hover:bg-white/10 disabled:opacity-30"
-              aria-label="Previous page"
-            >
-              <IconChevronLeft className="h-4 w-4" />
-            </button>
-            <span className="min-w-20 text-center text-xs font-medium tabular-nums text-slate-300">
-              Page {pageIndex + 1} / {total}
-            </span>
-            <button
-              type="button"
-              onClick={() => onPageChange(Math.min(total - 1, pageIndex + 1))}
-              disabled={pageIndex >= total - 1}
-              className="rounded-lg border border-white/10 bg-white/5 p-1.5 text-slate-300 transition-colors hover:bg-white/10 disabled:opacity-30"
-              aria-label="Next page"
-            >
-              <IconChevronRight className="h-4 w-4" />
-            </button>
-          </div>
-
-          {plan && (
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-fk/30 bg-fk/10 px-3 py-1 text-[11px] font-semibold tabular-nums text-fk-soft">
-              <IconScan className="h-3.5 w-3.5" />
-              {plan.cropW.toFixed(0)} × {plan.cropH.toFixed(0)} pt → ×{plan.scale.toFixed(2)} → {OUT_W} × {OUT_H} pt
-            </span>
-          )}
-        </div>
       </div>
 
-      {renderError && (
-        <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-xs text-red-300">
-          Preview failed: {renderError}
+      <div className="preview__bar">
+        <div className="preview__pager">
+          <button
+            type="button"
+            className="btn btn--quiet btn--icon"
+            onClick={() => onPageChange(Math.max(0, pageIndex - 1))}
+            disabled={pageIndex === 0}
+            aria-label="Previous page"
+          >
+            <IconChevronLeft width={17} height={17} />
+          </button>
+          <span className="preview__counter" aria-live="polite">
+            Page {Math.min(pageIndex + 1, total)} / {total}
+          </span>
+          <button
+            type="button"
+            className="btn btn--quiet btn--icon"
+            onClick={() => onPageChange(Math.min(total - 1, pageIndex + 1))}
+            disabled={pageIndex >= total - 1}
+            aria-label="Next page"
+          >
+            <IconChevronRight width={17} height={17} />
+          </button>
         </div>
-      )}
 
-      {plan && plan.warnings.length > 0 && (
-        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
-          <p className="flex items-center gap-2 text-xs font-semibold text-amber-300">
-            <IconAlert className="h-4 w-4 shrink-0" />
-            Page {plan.pageIndex + 1} needs attention
-          </p>
-          <ul className="mt-1.5 list-disc space-y-1 pl-6 text-xs leading-relaxed text-amber-200/80">
-            {plan.warnings.map((w, i) => (
-              <li key={i}>{w}</li>
-            ))}
-          </ul>
-        </div>
-      )}
+        {plan && (
+          <span className="preview__geometry" title="Crop size → uniform scale → output page size">
+            <IconScan
+              width={13}
+              height={13}
+              style={{ display: "inline", verticalAlign: "-2px", marginRight: 5 }}
+            />
+            {plan.cropW.toFixed(0)} × {plan.cropH.toFixed(0)} pt → ×{plan.scale.toFixed(2)} → {OUT_W} × {OUT_H} pt
+          </span>
+        )}
+      </div>
 
-      <p className="px-1 text-[11px] leading-relaxed text-slate-500">
-        Rendered preview only — the final PDF embeds the original vector content, never this raster.
-        Labels are scaled uniformly, so barcode bar ratios stay intact.
-      </p>
+      <div className="card__body card__body--tight">
+        {renderError ? (
+          <div className="alert alert--danger" role="alert" style={{ marginBottom: 12 }}>
+            <IconAlert className="alert__icon" width={16} height={16} />
+            <div>
+              <p className="alert__title">Preview failed</p>
+              <p>{renderError}. The export still uses the original vector pages, so you can keep going.</p>
+            </div>
+          </div>
+        ) : null}
+
+        {plan && plan.warnings.length > 0 ? (
+          <div className="alert alert--warn" style={{ marginBottom: 12 }}>
+            <IconAlert className="alert__icon" width={16} height={16} />
+            <div>
+              <p className="alert__title">Page {plan.pageIndex + 1} needs attention</p>
+              <ul className="alert__list">
+                {plan.warnings.map((w, i) => (
+                  <li key={i}>{w}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        ) : null}
+
+        <p className="preview__note">
+          This is a rendered preview only — the exported PDF embeds the original vector content, never
+          this raster. Labels are scaled uniformly, so barcode bar ratios stay intact.
+        </p>
+      </div>
     </section>
   );
 }

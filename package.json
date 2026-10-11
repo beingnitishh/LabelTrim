@@ -1,5 +1,5 @@
 {
-  "name": "react-vite-tailwind",
+  "name": "labeltrim",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -7,23 +7,24 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test:compat": "node test/build.mjs && node test/dist/pipeline.test.mjs"
+    "typecheck": "tsc --noEmit",
+    "test:compat": "node test/build.mjs && node test/dist/pipeline.test.mjs",
+    "test:compat:css": "node test/cssCompat.test.mjs",
+    "test": "npm run typecheck && npm run build:standalone && npm run test:compat && npm run test:ui && npm run test:compat:css",
+    "test:ui": "node test/build.mjs && node test/dist/uiRender.test.mjs",
+    "build:standalone": "vite build && node scripts/make-standalone.mjs"
   },
   "dependencies": {
-    "clsx": "2.1.1",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^5.6.205",
     "react": "19.2.6",
-    "react-dom": "19.2.6",
-    "tailwind-merge": "3.4.0"
+    "react-dom": "19.2.6"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "4.1.17",
     "@types/node": "22.19.17",
     "@types/react": "19.2.7",
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "5.1.1",
-    "tailwindcss": "4.1.17",
     "typescript": "5.9.3",
     "vite": "7.3.2",
     "vite-plugin-singlefile": "2.3.0"
