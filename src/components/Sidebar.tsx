@@ -57,11 +57,12 @@ export default function Sidebar({ view, onViewChange, open }: SidebarProps) {
         </p>
         <p className="privacy-card__body">
           Your PDFs never leave this device. Everything — analysis, cropping and export — runs inside
-          your browser, so customer names, addresses and order IDs stay with you.
+          your browser, so customer names, addresses and order IDs stay with you. A batch in progress
+          is cached here in the browser, so an unexpected reload cannot lose it.
         </p>
       </div>
 
-      <p className="sidebar__foot">LabelTrim v1 · no upload, no server, no retention.</p>
+      <p className="sidebar__foot">LabelTrim v1 · no upload, no server, no third party.</p>
     </aside>
   );
 }

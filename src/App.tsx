@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import GuideScreen from "./components/GuideScreen";
 import PreviewPane from "./components/PreviewPane";
 import ReportPanel from "./components/ReportPanel";
+import RestoreNotice from "./components/RestoreNotice";
 import Sidebar from "./components/Sidebar";
 import type { View } from "./components/Sidebar";
 import Stepper from "./components/Stepper";
@@ -13,6 +14,16 @@ import { analyzePdf } from "./lib/analyze";
 import { computePlan, DEFAULT_CALIBRATION } from "./lib/calibration";
 import { buildDemoPdf } from "./lib/demo";
 import { build4x6Pdf } from "./lib/process";
+import {
+  clearSession,
+  continuesTabSession,
+  loadSession,
+  looksLikeReload,
+  saveMeta,
+  saveOutput,
+  saveSource,
+} from "./lib/session";
+import type { SessionSnapshot } from "./lib/session";
 import type { Calibration, OutputInfo, RawPage } from "./lib/types";
 import { downloadBytes, friendlyError, safeBaseName } from "./lib/utils";
 
@@ -33,12 +44,69 @@ export default function App() {
   const [autoDownloaded, setAutoDownloaded] = useState(false);
   const [overlayOn, setOverlayOn] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  /** "restored" = the page reloaded under the user and we put the batch back. */
+  const [reloaded, setReloaded] = useState(false);
+  const [restoredAt, setRestoredAt] = useState(0);
+  /** A saved batch from an earlier visit, offered on the upload screen. */
+  const [resumable, setResumable] = useState<SessionSnapshot | null>(null);
   const runIdRef = useRef(0);
 
   const plans = useMemo(() => rawPages.map((p) => computePlan(p, cal)), [rawPages, cal]);
   const safePage = Math.min(pageIndex, Math.max(0, plans.length - 1));
   const inFlow = phase === "ready" || phase === "processing" || phase === "done";
   const step = phase === "idle" || phase === "analyzing" ? 1 : phase === "ready" ? 2 : 3;
+
+  /* ------------------------------------------- reload / crash recovery (mount) */
+  useEffect(() => {
+    let alive = true;
+    // Both checks must run before any await: sessionStorage is per-tab, and a
+    // reload of the same tab is the strongest "this was not a fresh visit".
+    const sameTab = continuesTabSession();
+    const wasReload = looksLikeReload();
+
+    (async () => {
+      const snapshot = await loadSession();
+      if (!alive || !snapshot) return;
+      // The user already started something while IndexedDB was opening.
+      if (runIdRef.current !== 0) return;
+
+      if (wasReload || sameTab) {
+        applySnapshot(snapshot);
+        setReloaded(true);
+        return;
+      }
+      setResumable(snapshot);
+    })();
+
+    return () => {
+      alive = false;
+    };
+    // Runs once per page load; applySnapshot only touches state setters.
+  }, []);
+
+  /** Put a persisted batch back on screen — never re-triggers a download. */
+  function applySnapshot(snapshot: SessionSnapshot) {
+    setBytes(snapshot.source);
+    setFileName(snapshot.fileName);
+    setRawPages(snapshot.rawPages);
+    setCal(snapshot.calibration);
+    setPageIndex(snapshot.pageIndex);
+    setOutput(snapshot.output);
+    setOutputBytes(snapshot.outputBytes);
+    // A restored PDF was downloaded in the *previous* page load; ask the user
+    // to press “Download again” instead of claiming a download just started.
+    setAutoDownloaded(false);
+    setError(null);
+    setPhase(snapshot.output ? "done" : "ready");
+    setResumable(null);
+    setRestoredAt(snapshot.savedAt);
+  }
+
+  /* ------------------------------------------------ persist crop-plan changes */
+  useEffect(() => {
+    if (!bytes || rawPages.length === 0) return;
+    void saveMeta(cal, safePage, phase === "done" ? "done" : "ready");
+  }, [bytes, rawPages, cal, safePage, phase]);
 
   /* ------------------------------------------------ mobile drawer behaviour */
   useEffect(() => {
@@ -64,6 +132,8 @@ export default function App() {
     setAutoDownloaded(false);
     setPageIndex(0);
     setFileName(file.name);
+    setReloaded(false);
+    setResumable(null);
 
     if (!/\.pdf$/i.test(file.name)) {
       setError("Please upload a PDF — Flipkart Seller Hub's bulk “Print Label” download.");
@@ -81,6 +151,8 @@ export default function App() {
       setBytes(buf);
       setRawPages(pages);
       setPhase("ready");
+      // Cache the batch so a reload/crash cannot throw the crop plan away.
+      void saveSource(file.name, buf, pages);
     } catch (err) {
       if (runIdRef.current !== runId) return;
       setPhase("idle");
@@ -97,6 +169,8 @@ export default function App() {
     setOutputBytes(null);
     setAutoDownloaded(false);
     setPageIndex(0);
+    setReloaded(false);
+    setResumable(null);
     try {
       setPhase("analyzing");
       setProgress({ done: 0, total: 3 });
@@ -109,6 +183,7 @@ export default function App() {
       setFileName("demo-flipkart-batch.pdf");
       setRawPages(pages);
       setPhase("ready");
+      void saveSource("demo-flipkart-batch.pdf", buf, pages);
     } catch (err) {
       if (runIdRef.current !== runId) return;
       setPhase("idle");
@@ -128,11 +203,14 @@ export default function App() {
       });
       if (runIdRef.current !== runId) return;
       const filename = `labeltrim-4x6-${safeBaseName(fileName)}-${plans.length}pages.pdf`;
+      const info: OutputInfo = { filename, sizeBytes: out.byteLength, pageCount: plans.length };
       setOutputBytes(out);
-      setOutput({ filename, sizeBytes: out.byteLength, pageCount: plans.length });
+      setOutput(info);
       downloadBytes(out, filename);
       setAutoDownloaded(true);
       setPhase("done");
+      // Keep the converted PDF too: after a reload “Download again” still works.
+      void saveOutput(info, out);
     } catch (err) {
       if (runIdRef.current !== runId) return;
       setPhase("ready");
@@ -152,6 +230,20 @@ export default function App() {
     setAutoDownloaded(false);
     setError(null);
     setCal(DEFAULT_CALIBRATION);
+    setReloaded(false);
+    setResumable(null);
+    // Explicit reset = the batch is done with; wipe it from this browser.
+    void clearSession();
+  }
+
+  function handleResume() {
+    if (!resumable) return;
+    applySnapshot(resumable);
+  }
+
+  function handleDiscard() {
+    setResumable(null);
+    void clearSession();
   }
 
   function handleDownload() {
@@ -236,6 +328,20 @@ export default function App() {
               ) : null}
 
               {/* ------------------------------------------------------- upload */}
+              {phase === "idle" && resumable ? (
+                <div style={{ marginBottom: 18 }}>
+                  <RestoreNotice
+                    variant="resumable"
+                    fileName={resumable.fileName}
+                    savedAt={resumable.savedAt}
+                    hasOutput={Boolean(resumable.output)}
+                    onResume={handleResume}
+                    onDiscard={handleDiscard}
+                    onDismiss={() => setResumable(null)}
+                  />
+                </div>
+              ) : null}
+
               {phase === "idle" ? (
                 <UploadScreen onFile={handleFile} onDemo={handleDemo} />
               ) : null}
@@ -278,44 +384,57 @@ export default function App() {
 
               {/* -------------------------------------------- review + download */}
               {inFlow ? (
-                <div className="review-layout">
-                  <div className="panel-column">
-                    <PreviewPane
-                      pdfBytes={bytes!}
-                      pageIndex={safePage}
-                      plans={plans}
-                      overlayOn={overlayOn}
-                      onToggleOverlay={() => setOverlayOn((v) => !v)}
-                      onPageChange={setPageIndex}
-                    />
-                    <div className="btn-row btn-row--end">
-                      <p className="hint" style={{ marginRight: "auto" }}>
-                        Preview rendered locally from your own file — no server round-trip.
-                      </p>
-                      <button type="button" className="btn btn--quiet" onClick={handleReset}>
-                        Start a new batch
-                      </button>
+                <>
+                  {reloaded ? (
+                    <div style={{ marginBottom: 18 }}>
+                      <RestoreNotice
+                        variant="restored"
+                        fileName={fileName}
+                        savedAt={restoredAt}
+                        hasOutput={Boolean(output)}
+                        onDismiss={() => setReloaded(false)}
+                      />
                     </div>
-                  </div>
+                  ) : null}
+                  <div className="review-layout">
+                    <div className="panel-column">
+                      <PreviewPane
+                        pdfBytes={bytes!}
+                        pageIndex={safePage}
+                        plans={plans}
+                        overlayOn={overlayOn}
+                        onToggleOverlay={() => setOverlayOn((v) => !v)}
+                        onPageChange={setPageIndex}
+                      />
+                      <div className="btn-row btn-row--end">
+                        <p className="hint" style={{ marginRight: "auto" }}>
+                          Preview rendered locally from your own file — no server round-trip.
+                        </p>
+                        <button type="button" className="btn btn--quiet" onClick={handleReset}>
+                          Start a new batch
+                        </button>
+                      </div>
+                    </div>
 
-                  <ReportPanel
-                    fileName={fileName}
-                    plans={plans}
-                    calibration={cal}
-                    onCalibrationChange={setCal}
-                    phase={phase === "processing" ? "processing" : phase === "done" ? "done" : "ready"}
-                    progress={progress}
-                    output={output}
-                    autoDownloaded={autoDownloaded}
-                    error={phase === "ready" ? error : null}
-                    onProcess={handleProcess}
-                    onDownload={handleDownload}
-                    onReset={handleReset}
-                    onJumpToPage={setPageIndex}
-                    onOpenGuide={() => handleViewChange("guide")}
-                    activePage={safePage}
-                  />
-                </div>
+                    <ReportPanel
+                      fileName={fileName}
+                      plans={plans}
+                      calibration={cal}
+                      onCalibrationChange={setCal}
+                      phase={phase === "processing" ? "processing" : phase === "done" ? "done" : "ready"}
+                      progress={progress}
+                      output={output}
+                      autoDownloaded={autoDownloaded}
+                      error={phase === "ready" ? error : null}
+                      onProcess={handleProcess}
+                      onDownload={handleDownload}
+                      onReset={handleReset}
+                      onJumpToPage={setPageIndex}
+                      onOpenGuide={() => handleViewChange("guide")}
+                      activePage={safePage}
+                    />
+                  </div>
+                </>
               ) : null}
             </>
           )}
@@ -324,8 +443,9 @@ export default function App() {
         <footer className="footer">
           <div className="footer__inner">
             <p>
-              <strong>LabelTrim</strong> · parses PDFs entirely in your browser — no upload, no server,
-              no database, no retention.
+              <strong>LabelTrim</strong> · parses PDFs entirely in your browser — no upload, no server.
+              Your current batch is cached in this browser only so a reload can't lose it, and it is
+              wiped when you start a new batch.
             </p>
             <p className="footer__legal">
               Flipkart is a trademark of Flipkart Internet Pvt. Ltd. LabelTrim is an independent tool,

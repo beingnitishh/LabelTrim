@@ -19,6 +19,7 @@ import { createElement as h } from "react";
 import App from "../src/App";
 import GuideScreen from "../src/components/GuideScreen";
 import PreviewPane from "../src/components/PreviewPane";
+import RestoreNotice from "../src/components/RestoreNotice";
 import ReportPanel from "../src/components/ReportPanel";
 import { computePlan, DEFAULT_CALIBRATION } from "../src/lib/calibration";
 import type { PagePlan, RawPage } from "../src/lib/types";
@@ -282,6 +283,57 @@ console.log("\nReport panel — download-success state");
   ok(html.includes("Download again"), "download again offered");
   ok(html.includes("Start a new batch"), "new batch offered");
   ok(html.includes("100% / actual size"), "printer reminder kept in the success state");
+}
+
+console.log("\nReload-recovery notices");
+{
+  const restored = renderToStaticMarkup(
+    h(RestoreNotice, {
+      variant: "restored",
+      fileName: "flipkart-batch.pdf",
+      savedAt: Date.now() - 60_000,
+      hasOutput: true,
+      onDismiss: noop,
+    }),
+  );
+  assertBalanced(restored, "restored notice");
+  ok(restored.includes("Batch restored"), "restored batch is announced, not silently swapped in");
+  ok(restored.includes("flipkart-batch.pdf"), "restored notice names the batch");
+  ok(restored.includes("1 minute ago"), "restored notice says when it was saved");
+  ok(restored.includes("Download again"), "restored notice points at Download again");
+  ok(restored.includes("Nothing was uploaded"), "restored notice keeps the privacy promise");
+  ok(restored.includes('role="status"'), "restored notice is a live status, not an alert");
+  ok(restored.includes('aria-label="Dismiss message"'), "restored notice can be dismissed");
+
+  const ready = renderToStaticMarkup(
+    h(RestoreNotice, {
+      variant: "restored",
+      fileName: "batch.pdf",
+      savedAt: Date.now() - 120_000,
+      hasOutput: false,
+      onDismiss: noop,
+    }),
+  );
+  ok(ready.includes("convert straight to 4 × 6"), "unconverted restored batch offers to convert");
+  no(ready.includes("Download again"), "no download claim when nothing was converted yet");
+
+  const resumable = renderToStaticMarkup(
+    h(RestoreNotice, {
+      variant: "resumable",
+      fileName: "half-done.pdf",
+      savedAt: Date.now() - 3 * 60 * 60_000,
+      hasOutput: false,
+      onResume: noop,
+      onDiscard: noop,
+      onDismiss: noop,
+    }),
+  );
+  assertBalanced(resumable, "resumable notice");
+  ok(resumable.includes("Unfinished batch in this browser"), "earlier batch is offered, not auto-opened");
+  ok(resumable.includes("3 hours ago"), "resumable notice says when it was saved");
+  ok(resumable.includes("Resume batch"), "resume action present");
+  ok(resumable.includes("Discard"), "discard action present");
+  ok(resumable.includes("this browser only"), "resumable notice is honest about local storage");
 }
 
 console.log(`\nAll ${passed} UI structure checks passed.`);
